@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+
+  <link rel="stylesheet" type="text/css" href="main.css">
+
+  <script src="./node_modules/web3/dist/web3.min.js"></script>
+
+</head>
+
+<body>
+  <div class="container">
+
+    <h1 id='statusbar'>Current Zone Info</h1>
+
+    <h2 id='contractAddress'></h2>
+    <h2 id="owner"></h2>
+    <h2 id="lastClaimed"></h2>
+    <h2 id="latlon"><h2>
+    <h2 id="contractNote"><h2>
+
+  </div>
+
+  <div class="container">
+
+    <div class="container" id='mapholder'>
+    </div>
+
+    <button id="CheckGPSButton" onclick="getLocation()">Check Current Location</button>
+
+    <label for="note" class="col-lg-2 control-label">Leave a note</label>
+    <input id="note" type="text">
+
+    <button id="claimButton">Claim!</button>
+  </div>
+
+  <div class="container">
+    <div class="container" id='locationList'>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+
+  <script>
+
+    web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+    web3.eth.defaultAccount = web3.eth.accounts[0];
+
+    var lat;
+    var lon;
+    var locationAddress;
+
+    // ABI
+
+    var locationManagerContract = web3.eth.contract([
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_lat",
+				"type": "int256"
+			},
+			{
+				"name": "_lon",
+				"type": "int256"
+			}
+		],
+		"name": "checkLocation",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_lat",
+				"type": "int256"
+			},
+			{
+				"name": "_lon",
+				"type": "int256"
+			}
+		],
+		"name": "initLocation",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "_locationIndex",
+				"type": "uint256"
+			}
+		],
+		"name": "contains",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "_lat",
+				"type": "int256"
+			},
+			{
+				"name": "_lon",
+				"type": "int256"
+			}
+		],
+		"name": "gpsToIndex",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "locations",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	}
+]);
+
+    var GPSnakeContract = web3.eth.contract([
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "note",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "lon",
+		"outputs": [
+			{
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "lat",
+		"outputs": [
+			{
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "getInfo",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			},
+			{
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"name": "",
+				"type": "int256"
+			},
+			{
+				"name": "",
+				"type": "int256"
+			},
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "lastClaimed",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "lat",
+				"type": "int256"
+			},
+			{
+				"name": "lon",
+				"type": "int256"
+			},
+			{
+				"name": "_note",
+				"type": "string"
+			}
+		],
+		"name": "claim",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"name": "_owner",
+				"type": "address"
+			},
+			{
+				"name": "lat",
+				"type": "int256"
+			},
+			{
+				"name": "lon",
+				"type": "int256"
+			},
+			{
+				"name": "_note",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "lat",
+				"type": "int256"
+			},
+			{
+				"indexed": false,
+				"name": "lon",
+				"type": "int256"
+			},
+			{
+				"indexed": false,
+				"name": "note",
+				"type": "string"
+			}
+		],
+		"name": "logClaim",
+		"type": "event"
+	}
+])
+
+    // contracts
+    var locationManager = locationManagerContract.at("0x05170612f83d09aed3e72dedd8f0df6bfd042de6");
+    //var locationAddress = locationManager.checkLocation(lat, lon);
+    locationAddress = "0xd001af7abddf46191dd750f3336bcd88324d8a96"
+    GPSnake = GPSnakeContract.at(locationAddress);
+
+    $("#claimButton").click(function() {
+      lat = ~~(lat*10000);
+      lon = ~~(lon*10000);
+      GPSnake.claim(lat, lon, $("#note").val().replace(/['"]+/g, ''));
+    });
+
+    window.addEventListener('DOMContentLoaded', function () {
+      getLocation();
+
+      GPSnake.getInfo(function(error, result) {
+        if (!error) {
+          $("#owner").html('Owner: ' + result[0]);
+          $("#lastClaimed").html('BlockTime Last Claimed: ' + Date(result[1]['c']));
+          $('#latlon').html('GPS: ' + (result[2]['c'] * result[2]['s'] / 10000).toString() + ','
+            + (result[3]['c'] * result[3]['s'] / 10000).toString());
+          $('#contractNote').html('Note: ' + result[4]);
+          }
+
+        }
+      )
+    });
+
+    // page loaded
+    // dom loaded
+    // gps pulled
+    // locationManager used to pull contract address for the location
+    // GPSnake is assigned the address
+    // GPSnake is used to pull contract data
+
+    var x = document.getElementById("statusbar");
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition, showError);
+        } else {
+            x.innerHTML = "Geolocation is not supported by this browser.";
+        }
+    }
+
+    function showPosition(position) {
+        _lat = Number((position.coords.latitude).toFixed(4))
+        _lon = Number((position.coords.longitude).toFixed(4))
+        var latlon = _lat + "," + _lon;
+        var img_url = "https://maps.googleapis.com/maps/api/staticmap?center="
+        +latlon+"&zoom=14&size=400x300&key=AIzaSyBu-916DdpKAjTmJNIgngS6HL_kDIKU0aU";
+        document.getElementById("mapholder").innerHTML = "<img src='"+img_url+"'>";
+        lat = _lat;
+        lon = _lon;
+        console.log(_lat +',' + _lon);
+    }
+
+    function showError(error) {
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                x.innerHTML = "Please allow/enable GPS."
+                break;
+            case error.POSITION_UNAVAILABLE:
+                x.innerHTML = "Location information is unavailable."
+                break;
+            case error.TIMEOUT:
+                x.innerHTML = "The request to get user location timed out."
+                break;
+            case error.UNKNOWN_ERROR:
+                x.innerHTML = "An unknown error occurred."
+                break;
+        }
+    }
+
+
+  </script>
+
+</body>
+
+</html>
