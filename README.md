@@ -1,8 +1,6 @@
-"# dapp_assignment"
-
-#GPSnake
-###(A bit Snake... plus GPS... plus lots of players...)
-####(ok maybe not really like Snake...)
+# GPSnake
+### (A bit Snake... plus GPS... plus lots of players...)
+#### (ok maybe not really like Snake...)
 
 Very early and not fully functional distributed geo-tagging/geo-caching game. Kind of like
 King of the Hill or Capture the Flag, but with everybody running around capturing
